@@ -71,11 +71,18 @@ def graficar(filename, title, ylabel, xlabel, ydata, xdata=np.array([]), color='
 	plt.close('all')
 
 
+def interpolate(signal, oldFreq, newFreq):
+	nOld = len(signal)
+	tOld = nOld / oldFreq; # Intervalo de tiempo
+	tiemposOld = np.linspace(0, tOld, nOld)
+	nNew = int(len(signal)*newFreq/oldFreq)
+	tNew = nNew / newFreq; # Intervalo de tiempo
+	tiemposNew = np.linspace(0, tNew, nNew)
+	return np.interp(tiemposNew,tiemposOld,signal)
 
-def AmplitudeModulation(moduladorasignal, frecuenciaportadora):
-	modulada = moduladorasignal*math.cos(frecuenciaportadora)
+def AmplitudeModulation(modulatorsignal, carrierfrec, modulationpercent):
+	modulada = modulationpercent*modulatorsignal*math.cos(carrierfrec)
 	return modulada
-
 
 
 
@@ -96,29 +103,50 @@ def applyAWGN(signal, samplefreq):
 def processFile(path):
 	#Lectura de audios
 	samplefreq1, data1, tiempos1 = load_wav_audio(path)
+	carrierFrec = 4*531000
 
+	nNew = int(len(data1)*carrierFrec/samplefreq1)
+	tNew = nNew / carrierFrec; # Intervalo de tiempo
+	tiemposNew = np.linspace(0, tNew, nNew)
 
-	#Aplicacion de Additive White Gaussian Noise
-	AWGNaplication = applyAWGN(data1,samplefreq1)
+	print(nNew)
+	print(len(tiemposNew))
+	print(tiemposNew[nNew-1])
+	print(tiempos1[len(data1)-1])
 
-	#Ruido aplicado
-	ruidoAWGN = generateAWGN(0,0.1,int(samplefreq1/2))
+	signalInterpolated = interpolate(data1, samplefreq1, carrierFrec)
+
+	am25 = AmplitudeModulation(signalInterpolated, carrierFrec , 0.15)
+	am100 = AmplitudeModulation(signalInterpolated, carrierFrec , 1.0)
+	am125 = AmplitudeModulation(signalInterpolated, carrierFrec , 1.25)
+
 
 	#Gráficas variadas
 	
 	#Señal original
 	graficar(AUDIO_NAME  , "Original signal: " + AUDIO_NAME  , AMPLITUDEYLABEL , TIMEXLABEL , data1)
+	graficar(AUDIO_NAME + "25","", AMPLITUDEYLABEL, TIMEXLABEL, am25[:100000] , tiemposNew[:100000])
+	graficar(AUDIO_NAME + "100","", AMPLITUDEYLABEL, TIMEXLABEL, am100[:100000] , tiemposNew[:100000])
+	graficar(AUDIO_NAME + "125","", AMPLITUDEYLABEL, TIMEXLABEL, am125[:100000] , tiemposNew[:100000])
+	
+
+
+	#Aplicacion de Additive White Gaussian Noise
+	#AWGNaplication = applyAWGN(data1,samplefreq1)
+
+	#Ruido aplicado
+	#ruidoAWGN = generateAWGN(0,0.1,int(samplefreq1/2))
 	
 	#AWGN
-	graficar("applied_noise","AWGN distribución N(0;0,1)", AMPLITUDEYLABEL, TIMEXLABEL, ruidoAWGN)
+	#graficar("applied_noise","AWGN distribución N(0;0,1)", AMPLITUDEYLABEL, TIMEXLABEL, ruidoAWGN)
 
 	#Señal con AWGN aplicadas
-	graficar("AWGN_"+AUDIO_NAME , "Applied AWGN to " + AUDIO_NAME , AMPLITUDEYLABEL , TIMEXLABEL , AWGNaplication)
+	#graficar("AWGN_"+AUDIO_NAME , "Applied AWGN to " + AUDIO_NAME , AMPLITUDEYLABEL , TIMEXLABEL , AWGNaplication)
 
 	#Salidas de audio variadas
 	
 	#Señal portadora
-	save_wav_audio("AWGN_"+AUDIO_NAME ,samplefreq1, AWGNaplication)
+	
 	
 
 processFile("handel.wav")
