@@ -2,6 +2,7 @@ import numpy as np
 import math
 from scipy.io.wavfile import read,write
 import matplotlib.pyplot as plt
+from scipy.fftpack import fft, ifft
 
 DPI = 100
 FIGURE_WIDTH = 8
@@ -11,9 +12,12 @@ GRAPH_DIR = "graph/"
 AUDIO_DIR = "audio/"
 
 TIMEXLABEL = "time"
+FREQXLABEL = "frequency"
 AMPLITUDEYLABEL = "amplitude"
 
+
 AWGN_TITLE = "Additive White Gaussian Noise"
+AM_TITLE = "Amplitude Modulation"
 AUDIO_NAME = "handel"
 GRAPH_AWGN_NO = 0
 
@@ -70,6 +74,24 @@ def graficar(filename, title, ylabel, xlabel, ydata, xdata=np.array([]), color='
 	plt.clf()
 	plt.close('all')
 
+# Funcion que hace uso de la tranformada de fourier, fft() y fftfreq(), para obtener la
+# secuencia de valores de los datos obtenidos del audio y para obtener las frecuencias
+# de muestreo (que depende de la frecuencia del audio y del largo del audio) respectivamente.
+# Entrada:
+#	data		- Datos obtenidos al leer el archivo de audio con scipy o con load_wav_audio().
+#	frequency	- Numero entero con la frecuencia de muestreo del audio en [Hz].
+# Salida:
+#	fftValues	- Transformada de fourier normalizada para los valores en data.
+#	fftSamples	- Frecuencias de muestreo que dependen del largo del arreglo data y la frequency.
+def fourier_transform(data, frequency):
+	n = len(data)
+	Ts = n / frequency
+	fftValues = fft(data) / n # Computacion y normalizacion
+	fftSamples = np.fft.fftfreq(n, 1/frequency)
+
+	return (fftValues, fftSamples)
+
+
 
 def interpolate(signal, oldFreq, newFreq):
 	nOld = len(signal)
@@ -80,23 +102,15 @@ def interpolate(signal, oldFreq, newFreq):
 	tiemposNew = np.linspace(0, tNew, nNew)
 	return np.interp(tiemposNew,tiemposOld,signal)
 
-def AmplitudeModulation(modulatorsignal, carrierfrec, modulationpercent):
-	modulada = modulationpercent*modulatorsignal*math.cos(carrierfrec)
+def AmplitudeModulation(modulatorsignal, carrierfrec, modulationpercentage):
+	modulada = modulationpercentage*modulatorsignal*math.cos(carrierfrec)
 	return modulada
 
+def FrequencyModulation(modulatorsignal, carrierFrec, modulationpercentage):
+
+	return 
 
 
-def generateAWGN(mean, stddev, length):
-	gaussianoise = np.random.normal(mean, stddev, length)
-	return gaussianoise
-
-def applyAWGN(signal, samplefreq):
-	awgn = generateAWGN(0,0.1, int(samplefreq/2))
-	i=0
-	while i<int(samplefreq/2):
-		signal[i] += awgn[i]
-		i+=1
-	return signal
 
 
 ##### TESTING #####
@@ -109,25 +123,41 @@ def processFile(path):
 	tNew = nNew / carrierFrec; # Intervalo de tiempo
 	tiemposNew = np.linspace(0, tNew, nNew)
 
-	print(nNew)
-	print(len(tiemposNew))
-	print(tiemposNew[nNew-1])
-	print(tiempos1[len(data1)-1])
+	#Se interpola la señal original
+	interpolatedSignal = interpolate(data1, samplefreq1, carrierFrec)
+	print(len(data1), samplefreq1)
+	#Se aplican la modulacion AM a la señal original
+	amResults = [AmplitudeModulation(interpolatedSignal, carrierFrec, 0.15),AmplitudeModulation(interpolatedSignal, carrierFrec , 1.0),AmplitudeModulation(interpolatedSignal, carrierFrec , 1.25)]
 
-	signalInterpolated = interpolate(data1, samplefreq1, carrierFrec)
+	print(len(interpolatedSignal), samplefreq1)
 
-	am25 = AmplitudeModulation(signalInterpolated, carrierFrec , 0.15)
-	am100 = AmplitudeModulation(signalInterpolated, carrierFrec , 1.0)
-	am125 = AmplitudeModulation(signalInterpolated, carrierFrec , 1.25)
+
+	#Se aplica la FFT a la señal original
+	fftOriginalSignal, fftOriginalSignalSamples = fourier_transform(data1,samplefreq1)
+	
+	graficar("original_fft", "Original Fourier Transform ", AMPLITUDEYLABEL, FREQXLABEL, abs(fftOriginalSignal), fftOriginalSignalSamples)
+	#Se aplica la FFT a la señal original
+	fftOriginalSignal, fftOriginalSignalSamples = fourier_transform(interpolatedSignal,samplefreq1)
+	
+	graficar("original_interpolated_fft", "Original Fourier Transform (interpolated)", AMPLITUDEYLABEL, FREQXLABEL, abs(fftOriginalSignal), fftOriginalSignalSamples)
+	
+	print("AIUDAAAAA")
+	#Se aplica la transformada de Fourier a cada modulación y se grafica
+	#for i in range(0,len(amResults)):
+		
+		#fftAMSignal, fftAMSignalSamples = fourier_transform(amResults[i],carrierfrec)
+		#graficar("AMfft"+str(i), "AM Fourier Transform " + str(i), AMPLITUDEYLABEL, FREQXLABEL, abs(fftAMSignal), fftAMSignalSamples)
 
 
 	#Gráficas variadas
 	
 	#Señal original
-	graficar(AUDIO_NAME  , "Original signal: " + AUDIO_NAME  , AMPLITUDEYLABEL , TIMEXLABEL , data1)
-	graficar(AUDIO_NAME + "25","", AMPLITUDEYLABEL, TIMEXLABEL, am25[:100000] , tiemposNew[:100000])
-	graficar(AUDIO_NAME + "100","", AMPLITUDEYLABEL, TIMEXLABEL, am100[:100000] , tiemposNew[:100000])
-	graficar(AUDIO_NAME + "125","", AMPLITUDEYLABEL, TIMEXLABEL, am125[:100000] , tiemposNew[:100000])
+	modulation_percentage = [25,100,125]
+
+	graficar(AUDIO_NAME  , "Original signal: " + AUDIO_NAME  , AMPLITUDEYLABEL , TIMEXLABEL , interpolatedSignal)
+	for i in range(0,len(modulation_percentage)):
+		graficar(AUDIO_NAME + str(modulation_percentage[i]), AM_TITLE + " " + str(modulation_percentage[i]), AMPLITUDEYLABEL, TIMEXLABEL, amResults[i] , tiemposNew)	
+	
 	
 
 
