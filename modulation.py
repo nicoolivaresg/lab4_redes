@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.io.wavfile import read,write
 import matplotlib.pyplot as plt
+from scipy import signal
 from scipy.fftpack import fft, ifft
-from scipy.signal import resample
 from scipy.integrate import cumtrapz
 
 DPI = 100
@@ -72,9 +72,10 @@ def graficar(filename, title, ylabel, xlabel, ydata, xdata=np.array([]), color='
 	plt.title(title)
 	plt.xlabel(xlabel)
 	plt.ylabel(ylabel)
-	plt.savefig(GRAPH_DIR + filename + ".png", bbox_inches='tight')
-	plt.clf()
-	plt.close('all')
+	plt.show()
+	#plt.savefig(GRAPH_DIR + filename + ".png", bbox_inches='tight')
+	#plt.clf()
+	#plt.close('all')
 
 # Funcion que hace uso de la tranformada de fourier, fft() y fftfreq(), para obtener la
 # secuencia de valores de los datos obtenidos del audio y para obtener las frecuencias
@@ -94,6 +95,26 @@ def fourier_transform(data, frequency):
 	return (fftValues, fftSamples)
 
 
+# Transforma una frecuencia (targetFreq) a su equivalente en frecuencia Nyquist, de acuerdo 
+# a la frecuencia de muestreo de la señal, esta frecuencia es por defecto 44100.
+# Entrada:
+#	targetFreq		- Frecuencia de la que se quiere obtener su equivalente en Nyquist frequency.
+#	sampleRate		- Frecuencia de muestreo de la señal (por defecto es 44100).
+# Salida:
+# 	nyq_frequency	- Frecuencia transformada a su equivalente en frecuencia Nyquist.
+def get_nyq(targetFreq, sampleRate=8192):
+	if(targetFreq > sampleRate):
+		return 1
+	else:
+		return np.divide(targetFreq, sampleRate / 2.0)
+
+def lowpass(fsignal, sampleFreq, targetFreq):
+	nyq = 0.5 * sampleFreq
+	high = (targetFreq / 2) / nyq
+	b, a = signal.butter(9, high, 'low')
+	z = signal.filtfilt(b, a, fsignal)
+	return z
+
 
 def interpolate(signal, oldFreq, newFreq):
 	nOld = len(signal)
@@ -111,14 +132,26 @@ def AmplitudeModulation(modulatorSignal, carrierFreq, interpFreq, modulationperc
 	carrier = generateCarrier(carrierFreq, interpFreq, t)
 	return modulationpercentage * modulatorSignal * carrier
 
+def AmplitudDemod(modulatedSignal, carrierFreq, interpFreq, sampleFreq):
+	n = len(modulatedSignal)
+	t = n / (4*carrierFreq); # Intervalo de tiempo
+	carrier = generateCarrier(carrierFreq, interpFreq, t)
+	signal = modulatedSignal * carrier
+	newSignal = lowpass(signal, interpFreq, sampleFreq)
+	return newSignal
+
 def FrequencyModulation(modulatorSignal,carrierFreq, interpFreq, modulationpercentage):
 	n = len(modulatorSignal)
 	time = n / interpFreq
 	timeVector = np.linspace(0, time, n)
 	signalIntegral = cumtrapz(modulatorSignal, timeVector, initial=0)
+	#signalIntegral = np.cumsum(modulatorSignal)
 	w = 2 * np.pi * carrierFreq * timeVector
 	modulation = np.cos(w + modulationpercentage * signalIntegral)
 	return modulation
+
+def FrequencyDemod(modulatedSignal, carrierFreq, interpFreq, sampleFreq):
+	return 0
 
 def fmMod(modulatorSignal,carrierFreq, interpFreq, modulationpercentage = 0.0):
 	#Frecuencia de la portadora mas la de la señal
@@ -160,7 +193,7 @@ def processFile(path):
 	interpolatedSignal, tiemposInterpolated = interpolate(data1, samplefreq1, interpFreq)
 	#Variables para suma
 	samples = len(interpolatedSignal)
-	zoom_percentage = 0.6
+	zoom_percentage = 0.005
 	zoom_in_start = 0
 	zoom_in_stop = int(samples*zoom_percentage)
 	
@@ -172,11 +205,13 @@ def processFile(path):
 	#resAM = amMod(interpolatedSignal, samplefreq1,carrierFreq)
 	#graficar("am", "am", AMPLITUDEYLABEL, TIMEXLABEL, resAM[zoom_in_start:zoom_in_stop],  np.linspace(0,samplefreq1,len(interpolatedSignal)/samplefreq1*samplefreq1)[zoom_in_start:zoom_in_stop], color = 'r')
 
-	resFM = fmMod(interpolatedSignal, samplefreq1,carrierFreq)
-	graficar("fm", "fm", AMPLITUDEYLABEL, TIMEXLABEL, resFM[zoom_in_start:zoom_in_stop],  np.linspace(0,samplefreq1,len(interpolatedSignal)/samplefreq1*samplefreq1)[zoom_in_start:zoom_in_stop], color = 'r')
+	#resFM = fmMod(interpolatedSignal, samplefreq1,carrierFreq)
+	#graficar("fm", "fm", AMPLITUDEYLABEL, TIMEXLABEL, resFM[zoom_in_start:zoom_in_stop],  np.linspace(0,samplefreq1,len(interpolatedSignal)/samplefreq1*samplefreq1)[zoom_in_start:zoom_in_stop], color = 'r')
 
 	#Se aplican la modulacion AM a la señal original
 	amResults = [AmplitudeModulation(interpolatedSignal, carrierFreq, interpFreq, 0.15),AmplitudeModulation(interpolatedSignal, carrierFreq , interpFreq, 1.0),AmplitudeModulation(interpolatedSignal, carrierFreq , interpFreq, 1.25)]
+	
+	#Se aplican la modulacion FM a la señal original
 	fmResults = [FrequencyModulation(interpolatedSignal, carrierFreq, interpFreq, 0.15),FrequencyModulation(interpolatedSignal, carrierFreq , interpFreq, 1.0),FrequencyModulation(interpolatedSignal, carrierFreq , interpFreq, 1.25)]
 
 	#print(len(interpolatedSignal), samplefreq1)
@@ -194,13 +229,16 @@ def processFile(path):
 	
 	#graficar("am_fft", "AM Fourier Transform ", AMPLITUDEYLABEL, FREQXLABEL, abs(fftam), fftsamplesam)
 
-	fftfm, fftsamplesfm = fourier_transform(resFM,carrierFreq)
+	#fftfm, fftsamplesfm = fourier_transform(resFM,carrierFreq)
 	
-	graficar("fm_fft", "FM Fourier Transform ", AMPLITUDEYLABEL, FREQXLABEL, abs(fftfm), fftsamplesfm)
+	#graficar("fm_fft", "FM Fourier Transform ", AMPLITUDEYLABEL, FREQXLABEL, abs(fftfm), fftsamplesfm)
 	#Se aplica la transformada de Fourier a cada modulación y se grafica
 	for i in range(0,len(amResults)):
 		fftAMSignal, fftAMSignalSamples = fourier_transform(amResults[i],interpFreq)
 		graficar("AMfft"+str(i), "AM Fourier Transform " + str(i), AMPLITUDEYLABEL, FREQXLABEL, abs(fftAMSignal), fftAMSignalSamples)
+		amDemod = AmplitudDemod(amResults[i], carrierFreq, interpFreq, samplefreq1)
+		fftAMSignal, fftAMSignalSamples = fourier_transform(amDemod, interpFreq)
+		graficar("demodAMfft"+str(i), "AM Fourier Transform " + str(i), AMPLITUDEYLABEL, FREQXLABEL, abs(fftAMSignal), fftAMSignalSamples)
 
 	for i in range(0,len(fmResults)):
 		fftFMSignal, fftFMSignalSamples = fourier_transform(fmResults[i],interpFreq)
@@ -213,10 +251,10 @@ def processFile(path):
 
 	#graficar(AUDIO_NAME  , "Original signal: " + AUDIO_NAME  , AMPLITUDEYLABEL , TIMEXLABEL , interpolatedSignal)
 	for i in range(0,len(modulation_percentage)):
-		graficar("AM-" + AUDIO_NAME + str(modulation_percentage[i]), AM_TITLE + " " + str(modulation_percentage[i]), AMPLITUDEYLABEL, TIMEXLABEL, amResults[i] , tiemposNew)	
+		graficar("AM-" + AUDIO_NAME + str(modulation_percentage[i]), AM_TITLE + " " + str(modulation_percentage[i]), AMPLITUDEYLABEL, TIMEXLABEL, amResults[i][zoom_in_start:zoom_in_stop] , tiemposNew[zoom_in_start:zoom_in_stop])	
 	
 	for i in range(0,len(modulation_percentage)):
-		graficar("FM-" + AUDIO_NAME + str(modulation_percentage[i]), FM_TITLE + " " + str(modulation_percentage[i]), AMPLITUDEYLABEL, TIMEXLABEL, amResults[i] , tiemposNew)	
+		graficar("FM-" + AUDIO_NAME + str(modulation_percentage[i]), FM_TITLE + " " + str(modulation_percentage[i]), AMPLITUDEYLABEL, TIMEXLABEL, fmResults[i][zoom_in_start:zoom_in_stop] , tiemposNew[zoom_in_start:zoom_in_stop])	
 	
 
 
