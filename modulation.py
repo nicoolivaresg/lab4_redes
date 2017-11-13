@@ -284,6 +284,8 @@ def processFile(path):
 	interpFreq = 4 * carrierFreq
 
 	graficar(AUDIO_NAME, "Señal original", AMPLITUDEYLABEL, TIMEXLABEL, data1, tiempos1)
+	fftValues, fftSamples = fourier_transform(data1, samplefreq1)
+	graficar(AUDIO_NAME+"-fft", "Transformada de Fourier de la señal", AMPLITUDEYLABEL, FREQXLABEL, abs(fftValues), fftSamples)
 
 	#Se interpola la señal original
 	interpolatedSignal, tiemposInterpolated = interpolate(data1, samplefreq1, interpFreq)
