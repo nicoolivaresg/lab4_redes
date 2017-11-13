@@ -329,7 +329,7 @@ def processFile(path):
 		fmDemod = FrequencyDemod(FMresult, carrierFreq, timeVector) * samplefreq1
 		save_wav_audio(AUDIO_NAME+"FM"+str(i)+"-demod", interpFreq, fmDemod)
 		fftFMSignal, fftFMSignalSamples = fourier_transform(fmDemod,interpFreq)
-		graficar("demodFMfft"+str(i), "FM Fourier Transform " + str(i), AMPLITUDEYLABEL, FREQXLABEL, abs(fftFMSignal), fftFMSignalSamples)
+		graficar("demodFMfft"+str(i), "FM Demodulated Fourier Transform " + str(i), AMPLITUDEYLABEL, FREQXLABEL, abs(fftFMSignal), fftFMSignalSamples)
 
 	#Graficos con zoom para las modulaciones AM
 	for i in range(0,len(modulation_percentage)):
