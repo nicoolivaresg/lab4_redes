@@ -130,6 +130,8 @@ def get_nyq(targetFreq, sampleRate=8192):
 def lowpass(fsignal, sampleFreq, targetFreq):
 	nyq = 0.5 * sampleFreq
 	high = (targetFreq / 2) / nyq
+	if(high > 1):
+		high = 0.99999
 	b, a = signal.butter(9, high, 'low')
 	z = signal.filtfilt(b, a, fsignal)
 	return z
@@ -147,7 +149,7 @@ def interpolate(signal, oldFreq, newFreq):
 
 def AmplitudeModulation(modulatorSignal, carrierFreq, interpFreq, modulationpercentage):
 	n = len(modulatorSignal)
-	t = n / (4*carrierFreq); # Intervalo de tiempo
+	t = n / interpFreq; # Intervalo de tiempo
 	carrier = generateCarrier(carrierFreq, interpFreq, t)
 	return modulationpercentage * modulatorSignal * carrier
 
@@ -172,36 +174,17 @@ def FrequencyModulation(modulatorSignal,carrierFreq, interpFreq, modulationperce
 def FrequencyDemod(modulatedSignal, carrierFreq, interpFreq, sampleFreq):
 	return 0
 
-def fmMod(modulatorSignal,carrierFreq, interpFreq, modulationpercentage = 0.0):
-	#Frecuencia de la portadora mas la de la señal
-	freq = carrierFreq + modulatorSignal
-	#Calculo de la frecuencia instantanea: 
-	#integral instantanea: x(t) * dt
-	#
-	ifreq = np.cumsum(freq) * (1/interpFreq)
-	modulacion = np.cos(2 * np.pi * ifreq)
-	return modulacion
-
-
 def generateCarrier(freq, interpFreq, duration):
 	time = np.linspace(0,duration,duration*interpFreq)
 	amplitude = np.cos(2 * np.pi * freq * time)
 	return amplitude
 
-def amMod(data,interpFreq, carrierFreq):
-	#Tiempo de duracion de la señal
-	time = len(data)/interpFreq
-	#Generación de una portadora
-	portadora = generateCarrier(carrierFreq,interpFreq,time)
-	#MOdulación: data * portadora
-	modulacion = data * portadora
-	return modulacion
 
 ##### TESTING #####
 def processFile(path):
 	#Lectura de audios
 	samplefreq1, data1, tiempos1 = load_wav_audio(path)
-	carrierFreq = 5310
+	carrierFreq = 5300
 	interpFreq = 4 * carrierFreq
 
 	nNew = int(len(data1)*interpFreq/samplefreq1)
@@ -215,61 +198,38 @@ def processFile(path):
 	zoom_percentage = 0.005
 	zoom_in_start = 1000
 	zoom_in_stop = zoom_in_start + int(samples*zoom_percentage)
-	
-	
-	#portadora = generateCarrier(carrierFreq,samplefreq1,len(interpolatedSignal)/samplefreq1)
 
-	#graficar("cos_carrier", "Cos carrier", AMPLITUDEYLABEL, TIMEXLABEL, portadora[zoom_in_start:zoom_in_stop], np.linspace(0,samplefreq1,len(interpolatedSignal)/samplefreq1*samplefreq1)[zoom_in_start:zoom_in_stop])
 
-	#resAM = amMod(interpolatedSignal, samplefreq1,carrierFreq)
-	#graficar("am", "am", AMPLITUDEYLABEL, TIMEXLABEL, resAM[zoom_in_start:zoom_in_stop],  np.linspace(0,samplefreq1,len(interpolatedSignal)/samplefreq1*samplefreq1)[zoom_in_start:zoom_in_stop], color = 'r')
-
-	#resFM = fmMod(interpolatedSignal, samplefreq1,carrierFreq)
-	#graficar("fm", "fm", AMPLITUDEYLABEL, TIMEXLABEL, resFM[zoom_in_start:zoom_in_stop],  np.linspace(0,samplefreq1,len(interpolatedSignal)/samplefreq1*samplefreq1)[zoom_in_start:zoom_in_stop], color = 'r')
-
+	modulation_percentage = [15,100,125, 475]
+	modulations = len(modulation_percentage)
+	amResults = [None] * modulations
+	fmResults = [None] * modulations
 	#Se aplican la modulacion AM a la señal original
-	amResults = [AmplitudeModulation(interpolatedSignal, carrierFreq, interpFreq, 0.15),AmplitudeModulation(interpolatedSignal, carrierFreq , interpFreq, 1.0),AmplitudeModulation(interpolatedSignal, carrierFreq , interpFreq, 3.25)]
-	
-	#Se aplican la modulacion FM a la señal original
-	fmResults = [FrequencyModulation(interpolatedSignal, carrierFreq, interpFreq, 0.15),FrequencyModulation(interpolatedSignal, carrierFreq , interpFreq, 1.0),FrequencyModulation(interpolatedSignal, carrierFreq , interpFreq, 1.25)]
+	for i in range(0,len(modulation_percentage)):
+		AMresult = AmplitudeModulation(interpolatedSignal, carrierFreq, interpFreq, modulation_percentage[i] / 100.0)
+		amResults[i] = AMresult
 
-	#print(len(interpolatedSignal), samplefreq1)
-
-	#Se aplica la FFT a la señal original
-	#fftOriginalSignal, fftOriginalSignalSamples = fourier_transform(data1,samplefreq1)
-	
-	#graficar("original_fft", "Original Fourier Transform ", AMPLITUDEYLABEL, FREQXLABEL, abs(fftOriginalSignal), fftOriginalSignalSamples)
-	#Se aplica la FFT a la señal original
-	#fftOriginalSignal, fftOriginalSignalSamples = fourier_transform(interpolatedSignal,carrierFreq)
-	#graficar("original_interpolated_fft", "Original Fourier Transform (interpolated)", AMPLITUDEYLABEL, FREQXLABEL, abs(fftOriginalSignal), fftOriginalSignalSamples)
-	
-
-	#fftam, fftsamplesam = fourier_transform(resAM,carrierFreq)
-	
-	#graficar("am_fft", "AM Fourier Transform ", AMPLITUDEYLABEL, FREQXLABEL, abs(fftam), fftsamplesam)
-
-	#fftfm, fftsamplesfm = fourier_transform(resFM,carrierFreq)
-	
-	#graficar("fm_fft", "FM Fourier Transform ", AMPLITUDEYLABEL, FREQXLABEL, abs(fftfm), fftsamplesfm)
-	#Se aplica la transformada de Fourier a cada modulación y se grafica
-	for i in range(0,len(amResults)):
-		fftAMSignal, fftAMSignalSamples = fourier_transform(amResults[i],interpFreq)
+		# Transformada de Fourier de la señal modulada y el grafico
+		fftAMSignal, fftAMSignalSamples = fourier_transform(AMresult,interpFreq)
 		graficar("AMfft"+str(i), "AM Fourier Transform " + str(i), AMPLITUDEYLABEL, FREQXLABEL, abs(fftAMSignal), fftAMSignalSamples)
-		amDemod = AmplitudDemod(amResults[i], carrierFreq, interpFreq, samplefreq1)
-		save_wav_audio(AUDIO_NAME+str(i)+"-demod", interpFreq, amDemod)
+
+		# Demodular la señal, guardar su audio y graficar su transformada
+		amDemod = AmplitudDemod(AMresult, carrierFreq, interpFreq, samplefreq1)
+		save_wav_audio(AUDIO_NAME+"AM"+str(i)+"-demod", interpFreq, amDemod)
 		fftAMSignal, fftAMSignalSamples = fourier_transform(amDemod, samplefreq1)
 		graficar("demodAMfft"+str(i), "AM Demodulated Fourier Transform " + str(i), AMPLITUDEYLABEL, FREQXLABEL, abs(fftAMSignal), fftAMSignalSamples)
+	
+	#Se aplican la modulacion FM a la señal original
+	for i in range(0,len(modulation_percentage)):
+		FMresult = FrequencyModulation(interpolatedSignal, carrierFreq, interpFreq, modulation_percentage[i] / 100.0)
+		fmResults[i] = FMresult
 
-	for i in range(0,len(fmResults)):
+		# Obtener y graficar la transformada de Fourier de la señal modulada en FM
 		fftFMSignal, fftFMSignalSamples = fourier_transform(fmResults[i],interpFreq)
 		graficar("FMfft"+str(i), "FM Fourier Transform " + str(i), AMPLITUDEYLABEL, FREQXLABEL, abs(fftFMSignal), fftFMSignalSamples)
 
-	#Gráficas variadas
-	
-	#Señal original
-	modulation_percentage = [15,100,325]
-
-	#graficar(AUDIO_NAME  , "Original signal: " + AUDIO_NAME  , AMPLITUDEYLABEL , TIMEXLABEL , interpolatedSignal)
+	print("hi")
+	#Gráficas variadas	
 	for i in range(0,len(modulation_percentage)):
 		graficar("AM-" + AUDIO_NAME + str(modulation_percentage[i]), AM_TITLE + " " + str(modulation_percentage[i]), AMPLITUDEYLABEL, TIMEXLABEL, amResults[i][zoom_in_start:zoom_in_stop] , tiemposNew[zoom_in_start:zoom_in_stop])	
 	
