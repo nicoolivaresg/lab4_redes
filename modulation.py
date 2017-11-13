@@ -280,7 +280,7 @@ def generateCarrier(freq, interpFreq, duration, n = 0):
 def processFile(path):
 	#Lectura de audios
 	samplefreq1, data1, tiempos1 = load_wav_audio(path)
-	carrierFreq = 10550
+	carrierFreq = 11025
 	interpFreq = 4 * carrierFreq
 
 	graficar(AUDIO_NAME, "Señal original", AMPLITUDEYLABEL, TIMEXLABEL, data1, tiempos1)
