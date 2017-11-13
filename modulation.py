@@ -72,10 +72,29 @@ def graficar(filename, title, ylabel, xlabel, ydata, xdata=np.array([]), color='
 	plt.title(title)
 	plt.xlabel(xlabel)
 	plt.ylabel(ylabel)
-	plt.show()
-	#plt.savefig(GRAPH_DIR + filename + ".png", bbox_inches='tight')
-	#plt.clf()
-	#plt.close('all')
+	plt.savefig(GRAPH_DIR + filename + ".png", bbox_inches='tight')
+	plt.clf()
+	plt.close('all')
+
+def triple_subplot(XVector, YVector1, YVector2, YVector3, tipo ="AM", percentage=15):
+	plt.subplot(311)
+	plt.title("Modulación AM de la señal", fontsize=12)
+	plt.plot(XVector, YVector1, linewidth=0.4)
+	plt.ylabel("Amplitud")
+
+	plt.subplot(312)
+	plt.plot(XVector, YVector2, linewidth=0.4)
+	plt.ylabel("Amplitud")
+
+	plt.subplot(313)
+	plt.xlabel("Tiempo[s]")
+	plt.ylabel("Amplitud")
+	plt.plot(XVector, YVector3, linewidth=0.4)
+	plt.savefig(GRAPH_DIR + tipo + str(percentage) + ".png", bbox_inches='tight')
+	plt.clf()
+	plt.close('all')
+
+
 
 # Funcion que hace uso de la tranformada de fourier, fft() y fftfreq(), para obtener la
 # secuencia de valores de los datos obtenidos del audio y para obtener las frecuencias
@@ -194,8 +213,8 @@ def processFile(path):
 	#Variables para suma
 	samples = len(interpolatedSignal)
 	zoom_percentage = 0.005
-	zoom_in_start = 0
-	zoom_in_stop = int(samples*zoom_percentage)
+	zoom_in_start = 1000
+	zoom_in_stop = zoom_in_start + int(samples*zoom_percentage)
 	
 	
 	#portadora = generateCarrier(carrierFreq,samplefreq1,len(interpolatedSignal)/samplefreq1)
@@ -209,7 +228,7 @@ def processFile(path):
 	#graficar("fm", "fm", AMPLITUDEYLABEL, TIMEXLABEL, resFM[zoom_in_start:zoom_in_stop],  np.linspace(0,samplefreq1,len(interpolatedSignal)/samplefreq1*samplefreq1)[zoom_in_start:zoom_in_stop], color = 'r')
 
 	#Se aplican la modulacion AM a la señal original
-	amResults = [AmplitudeModulation(interpolatedSignal, carrierFreq, interpFreq, 0.15),AmplitudeModulation(interpolatedSignal, carrierFreq , interpFreq, 1.0),AmplitudeModulation(interpolatedSignal, carrierFreq , interpFreq, 1.25)]
+	amResults = [AmplitudeModulation(interpolatedSignal, carrierFreq, interpFreq, 0.15),AmplitudeModulation(interpolatedSignal, carrierFreq , interpFreq, 1.0),AmplitudeModulation(interpolatedSignal, carrierFreq , interpFreq, 3.25)]
 	
 	#Se aplican la modulacion FM a la señal original
 	fmResults = [FrequencyModulation(interpolatedSignal, carrierFreq, interpFreq, 0.15),FrequencyModulation(interpolatedSignal, carrierFreq , interpFreq, 1.0),FrequencyModulation(interpolatedSignal, carrierFreq , interpFreq, 1.25)]
@@ -237,8 +256,9 @@ def processFile(path):
 		fftAMSignal, fftAMSignalSamples = fourier_transform(amResults[i],interpFreq)
 		graficar("AMfft"+str(i), "AM Fourier Transform " + str(i), AMPLITUDEYLABEL, FREQXLABEL, abs(fftAMSignal), fftAMSignalSamples)
 		amDemod = AmplitudDemod(amResults[i], carrierFreq, interpFreq, samplefreq1)
-		fftAMSignal, fftAMSignalSamples = fourier_transform(amDemod, interpFreq)
-		graficar("demodAMfft"+str(i), "AM Fourier Transform " + str(i), AMPLITUDEYLABEL, FREQXLABEL, abs(fftAMSignal), fftAMSignalSamples)
+		save_wav_audio(AUDIO_NAME+str(i)+"-demod", interpFreq, amDemod)
+		fftAMSignal, fftAMSignalSamples = fourier_transform(amDemod, samplefreq1)
+		graficar("demodAMfft"+str(i), "AM Demodulated Fourier Transform " + str(i), AMPLITUDEYLABEL, FREQXLABEL, abs(fftAMSignal), fftAMSignalSamples)
 
 	for i in range(0,len(fmResults)):
 		fftFMSignal, fftFMSignalSamples = fourier_transform(fmResults[i],interpFreq)
@@ -247,7 +267,7 @@ def processFile(path):
 	#Gráficas variadas
 	
 	#Señal original
-	modulation_percentage = [15,100,125]
+	modulation_percentage = [15,100,325]
 
 	#graficar(AUDIO_NAME  , "Original signal: " + AUDIO_NAME  , AMPLITUDEYLABEL , TIMEXLABEL , interpolatedSignal)
 	for i in range(0,len(modulation_percentage)):
@@ -257,6 +277,16 @@ def processFile(path):
 		graficar("FM-" + AUDIO_NAME + str(modulation_percentage[i]), FM_TITLE + " " + str(modulation_percentage[i]), AMPLITUDEYLABEL, TIMEXLABEL, fmResults[i][zoom_in_start:zoom_in_stop] , tiemposNew[zoom_in_start:zoom_in_stop])	
 	
 
+	# Graficos triples
+	n = len(interpolatedSignal)
+	time = n / interpFreq
+	timeVector = np.linspace(0, time, n)
+	carrier = generateCarrier(carrierFreq, interpFreq, time)
+	zoom_data = 500
+	zoom_in_start = 1000
+	zoom_in_stop = zoom_in_start + zoom_data
+	for i in range(0,len(modulation_percentage)):
+		triple_subplot(timeVector[zoom_in_start:zoom_in_stop], interpolatedSignal[zoom_in_start:zoom_in_stop], carrier[zoom_in_start:zoom_in_stop], amResults[i][zoom_in_start:zoom_in_stop], "AM", modulation_percentage[i])
 
 	#Aplicacion de Additive White Gaussian Noise
 	#AWGNaplication = applyAWGN(data1,samplefreq1)
