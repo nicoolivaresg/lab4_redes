@@ -201,7 +201,7 @@ def interpolate(signal, oldFreq, newFreq):
 def AmplitudeModulation(modulatorSignal, carrierFreq, interpFreq, modulationPercentage):
 	n = len(modulatorSignal)
 	t = n / interpFreq; # Intervalo de tiempo
-	carrier = generateCarrier(carrierFreq, interpFreq, t)
+	carrier = generateCarrier(carrierFreq, interpFreq, t, n)
 	return modulationPercentage * modulatorSignal * carrier
 
 # Demodulacion de una señal modulada en amplitud.
@@ -216,8 +216,8 @@ def AmplitudeModulation(modulatorSignal, carrierFreq, interpFreq, modulationPerc
 #	signal - Señal demodulada, se puede grabar en audio.
 def AmplitudDemod(modulatedSignal, carrierFreq, interpFreq, sampleFreq):
 	n = len(modulatedSignal)
-	t = n / (4*carrierFreq); # Intervalo de tiempo
-	carrier = generateCarrier(carrierFreq, interpFreq, t)
+	t = n / interpFreq # Intervalo de tiempo
+	carrier = generateCarrier(carrierFreq, interpFreq, t, n)
 	signal = modulatedSignal * carrier
 	newSignal = lowpass(signal, interpFreq, sampleFreq)
 	return newSignal
@@ -264,11 +264,14 @@ def FrequencyDemod(modulatedSignal, carrierFreq, timeVector):
 # 	interpFreq 	- Frecuencia de la señal interpolada.
 #					Normalmente es 4 veces el valor de la frecuencia de la portadora.
 # 	duration	- Tiempo que dura la señal con la que se quiere cruzar la portadora.
+#	n 			- Cantidad de datos en la señal interpolada.
 #
 # Salida:
 #	carrier - Señal portadora con frecuencia freq.
-def generateCarrier(freq, interpFreq, duration):
-	time = np.linspace(0,duration,duration*interpFreq)
+def generateCarrier(freq, interpFreq, duration, n = 0):
+	if n == 0:
+		n = duration*interpFreq
+	time = np.linspace(0,duration,n)
 	amplitude = np.cos(2 * np.pi * freq * time)
 	return amplitude
 
@@ -341,7 +344,7 @@ def processFile(path):
 	n = len(interpolatedSignal)
 	time = n / interpFreq
 	timeVector = np.linspace(0, time, n)
-	carrier = generateCarrier(carrierFreq, interpFreq, time)
+	carrier = generateCarrier(carrierFreq, interpFreq, time, n)
 	zoom_data = 500
 	zoom_in_start = 1000
 	zoom_in_stop = zoom_in_start + zoom_data
