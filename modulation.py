@@ -12,9 +12,9 @@ FIGURE_HEIGHT = 3
 GRAPH_DIR = "graph/" 
 AUDIO_DIR = "audio/"
 
-TIMEXLABEL = "time"
-FREQXLABEL = "frequency"
-AMPLITUDEYLABEL = "amplitude"
+TIMEXLABEL = "Tiempo [s]"
+FREQXLABEL = "Frecuencia [Hz]"
+AMPLITUDEYLABEL = "Amplitud"
 
 
 AWGN_TITLE = "Additive White Gaussian Noise"
@@ -104,7 +104,7 @@ def triple_subplot(XVector, YVector1, YVector2, YVector3, tipo ="AM", percentage
 	plt.ylabel("Amplitud")
 
 	plt.subplot(313)
-	plt.xlabel("Tiempo[s]")
+	plt.xlabel("Tiempo [s]")
 	plt.ylabel("Amplitud")
 	plt.plot(XVector, YVector3, linewidth=0.4)
 	plt.savefig(GRAPH_DIR + tipo + "-" + str(percentage) + ".png", bbox_inches='tight')
@@ -280,7 +280,7 @@ def generateCarrier(freq, interpFreq, duration, n = 0):
 def processFile(path):
 	#Lectura de audios
 	samplefreq1, data1, tiempos1 = load_wav_audio(path)
-	carrierFreq = 5300
+	carrierFreq = 10550
 	interpFreq = 4 * carrierFreq
 
 	graficar(AUDIO_NAME, "Señal original", AMPLITUDEYLABEL, TIMEXLABEL, data1, tiempos1)
