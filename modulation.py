@@ -107,7 +107,7 @@ def triple_subplot(XVector, YVector1, YVector2, YVector3, tipo ="AM", percentage
 	plt.xlabel("Tiempo[s]")
 	plt.ylabel("Amplitud")
 	plt.plot(XVector, YVector3, linewidth=0.4)
-	plt.savefig(GRAPH_DIR + tipo + str(percentage) + ".png", bbox_inches='tight')
+	plt.savefig(GRAPH_DIR + tipo + "-" + str(percentage) + ".png", bbox_inches='tight')
 	plt.clf()
 	plt.close('all')
 
@@ -287,7 +287,7 @@ def processFile(path):
 	interpolatedSignal, tiemposInterpolated = interpolate(data1, samplefreq1, interpFreq)
 	# Variables para realizar el zoom
 	samples = len(interpolatedSignal)
-	zoom_percentage = 0.005
+	zoom_percentage = 0.001
 	zoom_in_start = 1000
 	zoom_in_stop = zoom_in_start + int(samples*zoom_percentage)
  
@@ -308,13 +308,13 @@ def processFile(path):
 
 		# Transformada de Fourier de la señal modulada y el grafico
 		fftAMSignal, fftAMSignalSamples = fourier_transform(AMresult,interpFreq)
-		graficar("AMfft"+str(i), "AM Fourier Transform " + str(i), AMPLITUDEYLABEL, FREQXLABEL, abs(fftAMSignal), fftAMSignalSamples)
+		graficar("AM-fft-"+str(modulation_percentage[i]), "AM Fourier Transform " + str(modulation_percentage[i])+"%", AMPLITUDEYLABEL, FREQXLABEL, abs(fftAMSignal), fftAMSignalSamples)
 
 		# Demodular la señal, guardar su audio y graficar su transformada
 		amDemod = AmplitudDemod(AMresult, carrierFreq, interpFreq, samplefreq1)
-		save_wav_audio(AUDIO_NAME+"AM"+str(i)+"-demod", interpFreq, amDemod)
+		save_wav_audio(AUDIO_NAME+"-AM-"+str(modulation_percentage[i])+"-demod", interpFreq, amDemod)
 		fftAMSignal, fftAMSignalSamples = fourier_transform(amDemod, samplefreq1)
-		graficar("demodAMfft"+str(i), "AM Demodulated Fourier Transform " + str(i), AMPLITUDEYLABEL, FREQXLABEL, abs(fftAMSignal), fftAMSignalSamples)
+		graficar("demod-AM-fft-"+str(modulation_percentage[i]), "AM Demodulated Fourier Transform " + str(modulation_percentage[i])+"%", AMPLITUDEYLABEL, FREQXLABEL, abs(fftAMSignal), fftAMSignalSamples)
 	
 	#Se aplican la modulacion FM a la señal original
 	for i in range(0,len(modulation_percentage)):
@@ -323,21 +323,21 @@ def processFile(path):
 
 		# Obtener y graficar la transformada de Fourier de la señal modulada en FM
 		fftFMSignal, fftFMSignalSamples = fourier_transform(fmResults[i],interpFreq)
-		graficar("FMfft"+str(i), "FM Fourier Transform " + str(i), AMPLITUDEYLABEL, FREQXLABEL, abs(fftFMSignal), fftFMSignalSamples)
+		graficar("FM-fft"+str(modulation_percentage[i]), "FM Fourier Transform " + str(modulation_percentage[i])+"%", AMPLITUDEYLABEL, FREQXLABEL, abs(fftFMSignal), fftFMSignalSamples)
 
 		# Demodular la señal, guardar su audio y graficar su transformada
 		fmDemod = FrequencyDemod(FMresult, carrierFreq, timeVector) * samplefreq1
-		save_wav_audio(AUDIO_NAME+"FM"+str(i)+"-demod", interpFreq, fmDemod)
+		save_wav_audio(AUDIO_NAME+"-FM-"+str(modulation_percentage[i])+"-demod", interpFreq, fmDemod)
 		fftFMSignal, fftFMSignalSamples = fourier_transform(fmDemod,interpFreq)
-		graficar("demodFMfft"+str(i), "FM Demodulated Fourier Transform " + str(i), AMPLITUDEYLABEL, FREQXLABEL, abs(fftFMSignal), fftFMSignalSamples)
+		graficar("demod-FM-fft-"+str(modulation_percentage[i]), "FM Demodulated Fourier Transform " + str(modulation_percentage[i])+"%", AMPLITUDEYLABEL, FREQXLABEL, abs(fftFMSignal), fftFMSignalSamples)
 
 	#Graficos con zoom para las modulaciones AM
 	for i in range(0,len(modulation_percentage)):
-		graficar("AM-" + AUDIO_NAME + str(modulation_percentage[i]), AM_TITLE + " " + str(modulation_percentage[i]), AMPLITUDEYLABEL, TIMEXLABEL, amResults[i][zoom_in_start:zoom_in_stop] , timeVector[zoom_in_start:zoom_in_stop])	
+		graficar("AM-" + AUDIO_NAME + "-" + str(modulation_percentage[i]), AM_TITLE + " " + str(modulation_percentage[i])+"%", AMPLITUDEYLABEL, TIMEXLABEL, amResults[i][zoom_in_start:zoom_in_stop] , timeVector[zoom_in_start:zoom_in_stop])	
 	
 	#Graficos con zoom para las modulaciones FM
 	for i in range(0,len(modulation_percentage)):
-		graficar("FM-" + AUDIO_NAME + str(modulation_percentage[i]), FM_TITLE + " " + str(modulation_percentage[i]), AMPLITUDEYLABEL, TIMEXLABEL, fmResults[i][zoom_in_start:zoom_in_stop] , timeVector[zoom_in_start:zoom_in_stop])	
+		graficar("FM-" + AUDIO_NAME + "-" + str(modulation_percentage[i]), FM_TITLE + " " + str(modulation_percentage[i])+"%", AMPLITUDEYLABEL, TIMEXLABEL, fmResults[i][zoom_in_start:zoom_in_stop] , timeVector[zoom_in_start:zoom_in_stop])	
 	
 
 	# Graficos triples
