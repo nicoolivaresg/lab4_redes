@@ -283,6 +283,8 @@ def processFile(path):
 	carrierFreq = 5300
 	interpFreq = 4 * carrierFreq
 
+	graficar(AUDIO_NAME, "Señal original", AMPLITUDEYLABEL, TIMEXLABEL, data1, tiempos1)
+
 	#Se interpola la señal original
 	interpolatedSignal, tiemposInterpolated = interpolate(data1, samplefreq1, interpFreq)
 	# Variables para realizar el zoom
