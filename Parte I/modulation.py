@@ -17,7 +17,6 @@ FREQXLABEL = "frequency"
 AMPLITUDEYLABEL = "amplitude"
 
 
-AWGN_TITLE = "Additive White Gaussian Noise"
 AM_TITLE = "Amplitude Modulation"
 FM_TITLE = "Frequency Modulation"
 AUDIO_NAME = "handel"
