@@ -149,7 +149,10 @@ def processFile(path):
 
 	#Modulacion de la señal
 	ASKResult = ASK_modulation(bitspersec, A,B,4*carrierFrec, signal)
-	time = np.linspace(0, len(ASKResult)/carrierFrec, num = 1/samplingRate)
-	graficar("ASK","ASK","amplitud","tiempo",ASKResult,time)
+	
+	##Lo anterior funciona, pero no sé como graficarlo
+	
+	#time = np.linspace(0, len(ASKResult)/carrierFrec, num = 1/samplingRate)
+	#graficar("ASK","ASK","amplitud","tiempo",ASKResult,time)
 
 processFile('handel.wav')
