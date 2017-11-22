@@ -151,33 +151,43 @@ def ASK_modulation(bitspersec, A, B, carrierFrec, signal):
 			y.extend(C0)
 	return np.array(y)
 
-def ASK_demodulation(B, carrierFrec, signal, signalTime, oldX):
-	ctimeVector = np.linspace(0, 1/carrierFrec, len(signal))
+def ASK_demodulation(B, carrierFrec, signal, signalTime, ratio):
+	ctimeVector = np.linspace(0, 80.5/carrierFrec, len(signal))
 	timeVector = np.linspace(0, signalTime, len(signal))
-	carrier = B * np.cos(2 * np.pi * carrierFrec * ctimeVector)
-	graficar("carrier","carrier","amplitud","tiempo",carrier,ctimeVector)
+	cosCarrier = B * np.cos(2 * np.pi * carrierFrec * ctimeVector)
+	sinCarrier = B * np.sin(2 * np.pi * carrierFrec * ctimeVector)
+	#graficar("cosine carrier","carrier","amplitud","tiempo",cosCarrier,ctimeVector)
+	#graficar("sine carrier","carrier","amplitud","tiempo",sinCarrier,ctimeVector)
 
-	product = abs(signal * carrier)
+	productCos = abs(signal * cosCarrier)
+	productSin = abs(signal * sinCarrier)
 
-	graficar("producto", "producto", "amplitud", "tiempo", product[500:1600], timeVector[500:1600])
-	lowPassed = lowpass(product, 8192, carrierFrec/8)
+	product = []
+	for i in range(0, len(productCos)):
+		product.append(max(productCos[i], productSin[i]))
 
-	graficar("lowpassa", "filtrado", "amplitud", "tiempo", lowPassed[500:1600], timeVector[500:1600])
+	product = np.array(product)
+
+	#graficar("producto", "producto", "amplitud", "tiempo", product, timeVector)
+	lowPassed = lowpass(product, 8192, carrierFrec/12)
+
+	#graficar("lowpassa", "filtrado", "amplitud", "tiempo", lowPassed, timeVector)
 
 	y = []
 	for amplitude in lowPassed:
-		if amplitude > B ** 1.4:
+		if amplitude > 9.6 :
 			y.append(1)
 		else:
 			y.append(0)
 
-	demodulatedSignal = np.interp(oldX, timeVector, np.array(y))
-	for i in range(0, len(demodulatedSignal)):
-		if demodulatedSignal[i] <= 0.5:
-			demodulatedSignal[i] = 0
-		else:
-			demodulatedSignal[i] = 1
-	return demodulatedSignal
+	#graficar("lowpassa-dig", "filtrado", "amplitud", "tiempo", np.array(y)[500:1600], timeVector[500:1600])
+
+	#demodulatedSignal = np.interp(oldX, timeVector, np.array(y))
+	demodulatedSignal = []
+	for i in range(16, len(y), int(ratio)):
+		demodulatedSignal.append(y[i])
+
+	return np.array(demodulatedSignal)
 
 
 	
@@ -230,7 +240,7 @@ def processFile(path):
 	timeVector = np.linspace(0, signalSampleTime, len(digitalSignalI))
 	
 	# FALTA AGREGAR RUIDO Y ARREGLAR LA DEMODULACION
-	demodulatedSignal = ASK_demodulation(B, carrierFrec, ASKBinary, signalSampleTime, oldX)
+	demodulatedSignal = ASK_demodulation(B, carrierFrec, ASKBinary, signalSampleTime, len(newX) / len(oldX))
 	demodulatedSignalI = np.interp(newX, oldX, demodulatedSignal)
 
 	# Graficar la señal digital, su modulacion y la modulacion con ruido
