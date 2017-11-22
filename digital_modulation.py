@@ -99,19 +99,49 @@ def graficar(filename, title, ylabel, xlabel, ydata, xdata=np.array([]), color='
 	plt.close('all')
 
 
+def fourier_transform(data, frequency):
+	n = len(data)
+	Ts = n / frequency
+	fftValues = fft(data) / n # Computacion y normalizacion
+	fftSamples = np.fft.fftfreq(n, 1/frequency)
+	graficar("test242", "titlus", "kasdjf", "isdahgkl", fftValues, fftSamples)
+
+	return (fftValues, fftSamples)
+
+
+# Funcion que realiza un filtro pasabajo para una señal. Se usa para terminar el proceso de
+# demodulamiento de una señal modulada en amplitud (AM).
+# 
+# Entrada:
+#	fsignal		- Señal a la que se le realiza el filtro pasabajo.
+# 	sampleFreq 	- Frecuencia de muestreo de la señal (frecuencia de interpolacion)
+# 	targetFreq 	- Frecuencia a la que se quiere realiza el filtro (highcut)
+#					Es la frecuencia de muestreo de la señal original.
+#
+# Salida:
+#	z	- Señal filtrada con un filtro pasabajo en la frecuencia targetFreq / 2.
+def lowpass(fsignal, sampleFreq, targetFreq):
+	nyq = 0.5 * sampleFreq
+	high = (targetFreq / 2) / nyq
+	if(high > 1):
+		high = 0.99999
+	b, a = signal.butter(9, high, 'low')
+	z = signal.filtfilt(b, a, fsignal)
+	return z
+
 def ASK_modulation(bitspersec, A, B, carrierFrec, signal):
 	# Vector de tiempo
-	time = np.linspace(0, 1, bitspersec)
+	timeVector = np.linspace(0, 1, bitspersec)
 	if carrierFrec != 5310:
 		# Formula del profe
-		time = np.arange(0, 5/carrierFrec, 1/(carrierFrec*10.5))
+		timeVector = np.arange(0, 5/carrierFrec, 1/(carrierFrec*10.5))
 	# Portadora para 1
-	C1 = B * np.cos(2 * np.pi * carrierFrec * time)
+	C1 = B * np.cos(2 * np.pi * carrierFrec * timeVector)
 	# Portadora para 0
-	C0 = A * np.cos(2 * np.pi * carrierFrec * time)
+	C0 = A * np.cos(2 * np.pi * carrierFrec * timeVector)
 
-	#graficar("C0","C0","amplitud","tiempo",C0,time)
-	#graficar("C1","C1","amplitud","tiempo",C1,time)
+	#graficar("C0","C0","amplitud","tiempo",C0,timeVector)
+	#graficar("C1","C1","amplitud","tiempo",C1,timeVector)
 	# Arreglo para almacenar resultados de los bits reconocidos de la señal
 	y = []
 	for bit in signal:
@@ -120,6 +150,36 @@ def ASK_modulation(bitspersec, A, B, carrierFrec, signal):
 		else:
 			y.extend(C0)
 	return np.array(y)
+
+def ASK_demodulation(B, carrierFrec, signal, signalTime, oldX):
+	ctimeVector = np.linspace(0, 1/carrierFrec, len(signal))
+	timeVector = np.linspace(0, signalTime, len(signal))
+	carrier = B * np.cos(2 * np.pi * carrierFrec * ctimeVector)
+	graficar("carrier","carrier","amplitud","tiempo",carrier,ctimeVector)
+
+	product = abs(signal * carrier)
+
+	graficar("producto", "producto", "amplitud", "tiempo", product[500:1600], timeVector[500:1600])
+	lowPassed = lowpass(product, 8192, carrierFrec/8)
+
+	graficar("lowpassa", "filtrado", "amplitud", "tiempo", lowPassed[500:1600], timeVector[500:1600])
+
+	y = []
+	for amplitude in lowPassed:
+		if amplitude > B ** 1.4:
+			y.append(1)
+		else:
+			y.append(0)
+
+	demodulatedSignal = np.interp(oldX, timeVector, np.array(y))
+	for i in range(0, len(demodulatedSignal)):
+		if demodulatedSignal[i] <= 0.5:
+			demodulatedSignal[i] = 0
+		else:
+			demodulatedSignal[i] = 1
+	return demodulatedSignal
+
+
 	
 
 def preProcessSignal(x):
@@ -143,38 +203,40 @@ def processFile(path):
 	#bitTime = 0.1
 	bitspersec = 33
 	#baudRate = 6 
-	cut = 1000 # Cuantos datos se cortan para de la señal digitalizada para modular
-	start = 500	# Desde que dato
+	dataToUse = 800 # Datos que se usan de la señal original
+	start = 600	# Desde que dato
 	end = 1600 # Hasta que dato se grafica
 	A = 1
 	B = 5
 	samplingRate, signal, timeSignalVector = load_wav_audio(path)
 	signalTime = len(signal)/samplingRate
 
-	#Preproceso de señal, conversion a bits (se corta para acelerar los calculos)
-	signalSample = signal[:cut]
-	newsignal = preProcessSignal(signalSample)
+	# Trabajaremos con una muestra de la señal para hacerla mas manejable
+	signalSample = signal[:dataToUse]
+	signalSampleTime = signalTime * (len(signalSample) / len(signal))
 
-	#Modulacion de la señal
-	#ASKResult = ASK_modulation(bitspersec, A,B,carrierFrec, signalSample)
-	timeVector = np.linspace(0, signalTime, len(newsignal))
-
-	# Cortar la señal digitalizada 
-	cutSignal = newsignal[:cut]
-	# Datos usados para interpolar la señal digitalizada para que tenga la misma cantidad
-	# de datos que la modulacion y se puedan graficar con el mismo vector de tiempo
-	oldX = np.linspace(0, signalTime * (cut / len(newsignal)), cut)
-	newX = np.linspace(0, signalTime * (cut / len(newsignal)), cut * bitspersec)
+	#Preproceso de señal, conversion a bits
+	digitalSignal = preProcessSignal(signalSample)
 
 	# Modulacion de la señal digital cortada
-	ASKBinary = ASK_modulation(bitspersec, A, B, carrierFrec, cutSignal)
-	cutSignal = np.interp(newX, oldX, cutSignal)
+	ASKBinary = ASK_modulation(bitspersec, A, B, carrierFrec, digitalSignal)
+
+	# Datos usados para interpolar la señal digitalizada para que tenga la misma cantidad
+	# de datos que la modulacion y se puedan graficar con el mismo vector de tiempo
+	oldX = np.linspace(0, signalSampleTime, len(digitalSignal))
+	newX = np.linspace(0, signalSampleTime, len(ASKBinary))
+	digitalSignalI = np.interp(newX, oldX, digitalSignal)
+
+	timeVector = np.linspace(0, signalSampleTime, len(digitalSignalI))
 	
-	# FALTA AGREGAR RUIDO Y LA DEMODULACION
+	# FALTA AGREGAR RUIDO Y ARREGLAR LA DEMODULACION
+	demodulatedSignal = ASK_demodulation(B, carrierFrec, ASKBinary, signalSampleTime, oldX)
+	demodulatedSignalI = np.interp(newX, oldX, demodulatedSignal)
+
 	# Graficar la señal digital, su modulacion y la modulacion con ruido
 	#triple_subplot(timeVector[start:end], signal[start:end], ASKResult[start:end], ASKResult[start:end], "test1")	
-	triple_subplot(timeVector[start:end], cutSignal[start:end], ASKBinary[start:end], ASKBinary[start:end], "test2")	
-	#graficar("ASK","ASK","amplitud","tiempo",newsignal[500:600])
+	triple_subplot(timeVector[start:end], digitalSignalI[start:end], ASKBinary[start:end], demodulatedSignalI[start:end], "test2")	
+	#graficar("ASK","ASK","amplitud","tiempo",digitalSignal[500:600])
 
 processFile('handel.wav')
 # Lo que viene a continuacion lo use para probar con que numero de bitspersec (que deberia 
