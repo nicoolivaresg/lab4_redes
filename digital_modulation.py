@@ -46,29 +46,29 @@ def load_wav_audio(filename):
 # que trae matplotlib.
 # 
 # Entrada:
-#	XVector		- Vector comun x para los 3 graficos
-# 	YVector1 	- Vector de valores y para el grafico de más arriba
-# 	YVector2 	- Vector de valores y para el grafico del medio
-#	YVector3 	- Vector de valores y para el grafico de mas abajo
-#	tipo 	 	- Tipo de modulacion que usa esta figura 
-#				  	(se usa para crear el nombre de la figura)
-#	percentage 	- Porcentaje de modulacion que se usa en esta figura 
-#					(se usa para crear el nombre de la figura).
-def triple_subplot(XVector, YVector1, YVector2, YVector3, tipo ="AM", percentage=15):
+#	XVector		- Vector comun x para los 3 graficos.
+# 	YVector1 	- Vector de valores y para el grafico de más arriba.
+# 	YVector2 	- Vector de valores y para el grafico del medio.
+#	YVector3 	- Vector de valores y para el grafico de mas abajo.
+#	filename	- Nombre del archivo en el que se guarda la figura (sin extension).
+##
+def triple_subplot(XVector, YVector1, YVector2, YVector3, filename):
 	plt.subplot(311)
-	plt.title("Modulación AM de la señal", fontsize=12)
+	plt.title("Señal digitalizada", fontsize=12)
 	plt.plot(XVector, YVector1, linewidth=0.4)
 	plt.ylabel("Amplitud")
 
 	plt.subplot(312)
+	plt.title("Señal modulada por ASK", fontsize=12)
 	plt.plot(XVector, YVector2, linewidth=0.4)
 	plt.ylabel("Amplitud")
 
 	plt.subplot(313)
+	plt.title("Señal modulada por ASK + ruido AWGN", fontsize=12)
 	plt.xlabel("Tiempo[s]")
 	plt.ylabel("Amplitud")
 	plt.plot(XVector, YVector3, linewidth=0.4)
-	plt.savefig(GRAPH_DIR + tipo + str(percentage) + ".png", bbox_inches='tight')
+	plt.savefig(GRAPH_DIR + filename + ".png", bbox_inches='tight')
 	plt.clf()
 	plt.close('all')
 
@@ -102,20 +102,23 @@ def graficar(filename, title, ylabel, xlabel, ydata, xdata=np.array([]), color='
 def ASK_modulation(bitspersec, A, B, carrierFrec, signal):
 	# Vector de tiempo
 	time = np.linspace(0, 1, bitspersec)
-	# Portadora para 0
-	C0 = A * np.cos(2 * np.pi * carrierFrec * time)
+	if carrierFrec != 5310:
+		# Formula del profe
+		time = np.arange(0, 5/carrierFrec, 1/(carrierFrec*10.5))
 	# Portadora para 1
 	C1 = B * np.cos(2 * np.pi * carrierFrec * time)
-	# Arreglo para almazenar resultados de los bits reconocidos de la señal
+	# Portadora para 0
+	C0 = A * np.cos(2 * np.pi * carrierFrec * time)
 
-	graficar("C0","C0","amplitud","tiempo",C0,time)
-	graficar("C1","C1","amplitud","tiempo",C1,time)
+	#graficar("C0","C0","amplitud","tiempo",C0,time)
+	#graficar("C1","C1","amplitud","tiempo",C1,time)
+	# Arreglo para almacenar resultados de los bits reconocidos de la señal
 	y = []
 	for bit in signal:
 		if bit:
-			y.extend(C0)
-		else:
 			y.extend(C1)
+		else:
+			y.extend(C0)
 	return np.array(y)
 	
 
@@ -132,27 +135,56 @@ def preProcessSignal(x):
 	z = []
 	for elem in y:
 		z.append(int(elem))
-	return z
+	return np.array(z)
 
 def processFile(path):
 	
 	carrierFrec = 5310
 	#bitTime = 0.1
-	bitspersec = 1000
+	bitspersec = 33
 	#baudRate = 6 
-	A = 2000
-	B = 10000
-	samplingRate, signal, timeSignal = load_wav_audio(path)
+	cut = 1000 # Cuantos datos se cortan para de la señal digitalizada para modular
+	start = 500	# Desde que dato
+	end = 1600 # Hasta que dato se grafica
+	A = 1
+	B = 5
+	samplingRate, signal, timeSignalVector = load_wav_audio(path)
+	signalTime = len(signal)/samplingRate
 
-	#Preproceso de señal, conversion a bits
-	newsignal = preProcessSignal(signal)
+	#Preproceso de señal, conversion a bits (se corta para acelerar los calculos)
+	signalSample = signal[:cut]
+	newsignal = preProcessSignal(signalSample)
 
 	#Modulacion de la señal
-	ASKResult = ASK_modulation(bitspersec, A,B,4*carrierFrec, signal)
+	#ASKResult = ASK_modulation(bitspersec, A,B,carrierFrec, signalSample)
+	timeVector = np.linspace(0, signalTime, len(newsignal))
+
+	# Cortar la señal digitalizada 
+	cutSignal = newsignal[:cut]
+	# Datos usados para interpolar la señal digitalizada para que tenga la misma cantidad
+	# de datos que la modulacion y se puedan graficar con el mismo vector de tiempo
+	oldX = np.linspace(0, signalTime * (cut / len(newsignal)), cut)
+	newX = np.linspace(0, signalTime * (cut / len(newsignal)), cut * bitspersec)
+
+	# Modulacion de la señal digital cortada
+	ASKBinary = ASK_modulation(bitspersec, A, B, carrierFrec, cutSignal)
+	cutSignal = np.interp(newX, oldX, cutSignal)
 	
-	##Lo anterior funciona, pero no sé como graficarlo
-	
-	#time = np.linspace(0, len(ASKResult)/carrierFrec, num = 1/samplingRate)
-	#graficar("ASK","ASK","amplitud","tiempo",ASKResult,time)
+	# FALTA AGREGAR RUIDO Y LA DEMODULACION
+	# Graficar la señal digital, su modulacion y la modulacion con ruido
+	#triple_subplot(timeVector[start:end], signal[start:end], ASKResult[start:end], ASKResult[start:end], "test1")	
+	triple_subplot(timeVector[start:end], cutSignal[start:end], ASKBinary[start:end], ASKBinary[start:end], "test2")	
+	#graficar("ASK","ASK","amplitud","tiempo",newsignal[500:600])
 
 processFile('handel.wav')
+# Lo que viene a continuacion lo use para probar con que numero de bitspersec (que deberia 
+# tener otro nombre porque no se que es en verdad) queda mas bonita la señal portadora
+"""
+for bits in range(1,150):
+	time = np.linspace(0, 1, bits)
+	C0 = 1 * np.cos(2 * np.pi * 5310 * time)
+	C1 = 5 * np.cos(2 * np.pi * 5310 * time)
+
+	graficar("C0" + str(bits),"C0","amplitud","tiempo",C0,time)
+	graficar("C1" + str(bits),"C1","amplitud","tiempo",C1,time)
+"""	
