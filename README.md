@@ -13,7 +13,7 @@ sudo apt-get install python3-tk
 ```
 
 Equipo:
-*Nicolás Mariángel Toledo
-*Nicolás Olivares González
+* Nicolás Mariángel Toledo
+* Nicolás Olivares González
 
 Estudiantes de Ingeniería Civil Informática
