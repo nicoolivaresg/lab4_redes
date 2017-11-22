@@ -8,6 +8,8 @@ from scipy.integrate import cumtrapz
 import random
 
 #### Constantes #####
+GET_ERROR_RATE = False
+
 DPI = 100
 FIGURE_WIDTH = 8
 FIGURE_HEIGHT = 3
@@ -347,18 +349,19 @@ def processFile(path, A, B, savePlot=False):
 processFile('handel.wav', 1, 5, True)
 processFile('handel.wav', 1, 8, True)
 
-lowerLimitB = 3
-upperLimitB = 12
-Belements = 10 * (upperLimitB - lowerLimitB) + 1
-B = np.linspace(lowerLimitB, upperLimitB, Belements)
-errorRates = []
-print(B)
-for b in B:
-	errorRates.append(processFile('handel.wav', 1, b))
+if GET_ERROR_RATE == True:
+	lowerLimitB = 3
+	upperLimitB = 12
+	Belements = 10 * (upperLimitB - lowerLimitB) + 1
+	B = np.linspace(lowerLimitB, upperLimitB, Belements)
+	errorRates = []
+	print(B)
+	for b in B:
+		errorRates.append(processFile('handel.wav', 1, b))
 
-errorRates = np.array(errorRates)
+	errorRates = np.array(errorRates)
 
-graficar("error_rate", "Tasa de error de acuerdo a la amplitud del bit 1", "Tasa de error [%]", "Amplitud de la señal portadora que representa el bit 1", errorRates, B)
+	graficar("error_rate", "Tasa de error de acuerdo a la amplitud del bit 1", "Tasa de error [%]", "Amplitud de la señal portadora que representa el bit 1", errorRates, B)
 
 
 
