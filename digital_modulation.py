@@ -288,11 +288,13 @@ def calculateSnrLinear(snrdb):
 #	path - String con el camino dondel se encuentra el archivo de audio que se quiere procesar.
 #	A 	 - Amplitud a utilizar en la modulacion ASK para representar el bit 0
 #	B 	 - Amplitud a utilizar en la modulacion ASK para representar el bit 1
+#	SNRdBLower - Signal-to-noise-ratio minimo en decibeles.
+#	SNRdBUpper - Signal-to-noise-ratio maximo en decibeles.
 #	savePlot - Indica si es que se deben guardar los graficos.
 # Salida:
 #	errorRate - Porcentaje de error entre la señal demodulada con error y la señal digital.
 ##########
-def processFile(path, A, B, savePlot=False):
+def processFile(path, A, B, SNRdBLower, SNRdBUpper, savePlot=False):
 	carrierFreq = 5310
 	bitspersec = 33
 	dataToUse = 800 # Datos que se usan de la señal original
@@ -333,35 +335,39 @@ def processFile(path, A, B, savePlot=False):
 	# Calcular la tasa de error
 	errors = (demodulatedNoisySignal != digitalSignal).sum()
 	errorRate = 100.0 * errors / len(demodulatedNoisySignal)
-	print("Tasa de errores con amplitud B de " + str(B) + ": " + str(errorRate) + "%")
+	if(savePlot == False):
+		print("Tasa de errores (SNRdB = " + str(SNRdBUpper) + ") con amplitud B de " + str(B) + ": " + str(errorRate) + "%")
 
 	# Graficar la señal digital, su modulacion, la modulacion con ruido y las demodulaciones correspondientes
 	if savePlot == True:
 		triple_subplot(timeVector[start:end], digitalSignalI[start:end], ASKSignal[start:end], demodulatedSignalI[start:end],
-						"Señal digital", "Señal modulada por ASK", "Señal demodulada sin ruido", "ASK_dig_noiseless" + str(B))
+				"Señal digital", "Señal modulada por ASK", "Señal demodulada sin ruido", "ASK_dig_noiseless_" + str(B) + "_" + "SNDdB-" + str(SNRdBUpper))
 		triple_subplot(timeVector[start:end], digitalSignalI[start:end], noisyASKSignal[start:end], demodulatedNoisySignalI[start:end],
-						"Señal digital", "Señal modulada por ASK + ruido AWGN", "Señal demodulada con ruido", "ASK_dig_noisy" + str(B))
+				"Señal digital", "Señal modulada por ASK + ruido AWGN", "Señal demodulada con ruido", "ASK_dig_noisy_" + str(B) + "_" + "SNDdB-" + str(SNRdBUpper))
 	return errorRate
 
 # Se ejecuta el programa con distintas amplitudes para los bits 1 para mostrar
 # el efecto del ruido al tener amplitudes mas similares en las señales portadoras
 # (modulacion Amplitude Shift Keying (ASK))
-processFile('handel.wav', 1, 5, True)
-processFile('handel.wav', 1, 8, True)
+A = 1
+SNRdBs = np.linspace(-2, 10, 5)
 
-if GET_ERROR_RATE == True:
-	lowerLimitB = 3
-	upperLimitB = 12
-	Belements = 10 * (upperLimitB - lowerLimitB) + 1
-	B = np.linspace(lowerLimitB, upperLimitB, Belements)
-	errorRates = []
-	print(B)
-	for b in B:
-		errorRates.append(processFile('handel.wav', 1, b))
+for SNRdB in SNRdBs:
+	processFile('handel.wav', A, 5, SNRdB, SNRdB, True)
+	processFile('handel.wav', A, 8, SNRdB, SNRdB, True)
 
-	errorRates = np.array(errorRates)
+	if GET_ERROR_RATE == True:
+		lowerLimitB = 3
+		upperLimitB = 12
+		Belements = 10 * (upperLimitB - lowerLimitB) + 1
+		B = np.linspace(lowerLimitB, upperLimitB, Belements)
+		errorRates = []
+		for b in B:
+			errorRates.append(processFile('handel.wav', 1, b, SNRdB, SNRdB))
 
-	graficar("error_rate", "Tasa de error de acuerdo a la amplitud del bit 1", "Tasa de error [%]", "Amplitud de la señal portadora que representa el bit 1", errorRates, B)
+		errorRates = np.array(errorRates)
+
+		graficar("error_rate_SNRdB-" + str(SNRdB), "Tasa de error de acuerdo a la amplitud del bit 1 con SNR de " + str(SNRdB) + " dB", "Tasa de error [%]", "Amplitud de la señal portadora que representa el bit 1", errorRates, B)
 
 
 
